@@ -9,6 +9,8 @@ try:
     from sqlalchemy.schema import MetaData, Table, Column
     from sqlalchemy.sql.expression import text, func, select
     from sqlalchemy.types import DateTime, String
+    from sqlalchemy import delete
+
 except ImportError:
     raise ImportError("`sqlalchemy` not installed")
 
@@ -387,3 +389,48 @@ class PgVector2(VectorDb):
                 stmt = delete(self.table)
                 sess.execute(stmt)
                 return True
+    def delete_document(self, name: Optional[str] = None, document_id: Optional[str] = None) -> None:
+        """
+        Delete a document from the vector store by name or document id.
+
+        Args:
+            name (str): The name of the document to delete.
+            document_id (str): The id of the document to delete.
+        """
+        if name is None and document_id is None:
+            raise ValueError("You must provide either the document's name or id to delete it.")
+
+        with self.Session() as sess:
+            with sess.begin():
+                stmt = delete(self.table)
+                if name:
+                    stmt = stmt.where(self.table.c.name == name)
+                elif document_id:
+                    stmt = stmt.where(self.table.c.id == document_id)
+
+                sess.execute(stmt)
+                sess.commit()
+                logger.info(f"Deleted document: {name or document_id}")
+    def get_all_documents(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
+        """
+        Retrieve all documents from the vector store with their names and ids.
+        
+        Args:
+            limit (int): Optional limit for the number of documents to retrieve.
+            
+        Returns:
+            List[Dict[str, Any]]: A list of dictionaries containing the document id and name.
+        """
+        columns = [self.table.c.id, self.table.c.name]
+        stmt = select(*columns)
+    
+        if limit:
+            stmt = stmt.limit(limit)
+    
+        with self.Session() as sess:
+            with sess.begin():
+                result = sess.execute(stmt).fetchall()
+    
+        documents = [{"id": row.id, "name": row.name} for row in result]
+        return documents
+

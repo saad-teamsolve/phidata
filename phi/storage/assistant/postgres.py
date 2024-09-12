@@ -1,3 +1,4 @@
+"""PgAssistantStorage is about storing and managing large-scale, persistent data (entire assistant sessions), while AssistantMemory is about managing and retrieving short-term, session-specific memory to aid in ongoing conversations. Both classes are essential in an AI assistant system but serve different roles: one for long-term storage and the other for immediate, context-aware interaction."""
 from typing import Optional, Any, List
 
 try:

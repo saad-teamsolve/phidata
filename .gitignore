@@ -45,3 +45,8 @@ junk
 tmp
 
 .ipynb_checkpoints
+flagged/log.csv
+rag_assistant.py
+gradio_ui.py
+functions.py
+pdf_assistant.py
