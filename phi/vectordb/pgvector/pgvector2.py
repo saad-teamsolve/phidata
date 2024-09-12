@@ -389,6 +389,33 @@ class PgVector2(VectorDb):
                 stmt = delete(self.table)
                 sess.execute(stmt)
                 return True
+    
+    def document_exists(self, name: Optional[str] = None, document_id: Optional[str] = None) -> bool:
+        """
+        Check if a document exists in the vector store by name or document id.
+
+        Args:
+            name (str): The name of the document to check.
+            document_id (str): The id of the document to check.
+
+        Returns:
+            bool: True if the document exists, False otherwise.
+        """
+        if name is None and document_id is None:
+            raise ValueError("You must provide either the document's name or id to check for its existence.")
+
+        with self.Session() as sess:
+            query = select(self.table)  # Use the table directly
+            if name:
+                query = query.where(self.table.c.name == name)
+            elif document_id:
+                query = query.where(self.table.c.id == document_id)
+
+            result = sess.execute(query).fetchone()
+            return result is not None
+
+
+
     def delete_document(self, name: Optional[str] = None, document_id: Optional[str] = None) -> None:
         """
         Delete a document from the vector store by name or document id.
@@ -399,6 +426,10 @@ class PgVector2(VectorDb):
         """
         if name is None and document_id is None:
             raise ValueError("You must provide either the document's name or id to delete it.")
+
+        if not self.document_exists(name=name, document_id=document_id):
+            logger.info(f"Document not found: {name or document_id}")
+            return
 
         with self.Session() as sess:
             with sess.begin():
@@ -411,13 +442,14 @@ class PgVector2(VectorDb):
                 sess.execute(stmt)
                 sess.commit()
                 logger.info(f"Deleted document: {name or document_id}")
+
     def get_all_documents(self, limit: Optional[int] = None) -> List[Dict[str, Any]]:
         """
         Retrieve all documents from the vector store with their names and ids.
-        
+
         Args:
             limit (int): Optional limit for the number of documents to retrieve.
-            
+
         Returns:
             List[Dict[str, Any]]: A list of dictionaries containing the document id and name.
         """
@@ -433,4 +465,19 @@ class PgVector2(VectorDb):
     
         documents = [{"id": row.id, "name": row.name} for row in result]
         return documents
+    def add_document(self, documents: List[Document]) -> None:
+        """
+        Add a list of documents (e.g., PDFs) to the vector store.
+
+        Args:
+            documents (List[Document]): List of Document objects to be added.
+        """
+        if not isinstance(documents, list):
+            raise ValueError("Documents should be provided as a list.")
+
+        if not self.table_exists():
+            self.create()
+
+        self.insert(documents)
+
 
